@@ -1,0 +1,10 @@
+name = XML To Form
+description = Consumes XML, builds a form and renders it to a web page.
+core = 7.x
+configure = admin/config/content/xmltoform
+dependencies[] = date_api
+dependencies[] = date_popup
+dependencies[] = clientside_validation
+dependencies[] = clientside_validation_form
+files[] = xmltoform.test
+stylesheets[all][] = xmltoform.css

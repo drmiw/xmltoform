@@ -1,0 +1,258 @@
+<?php
+/**
+ * @file
+ * Uses Form API to consume XML, build a form and render it to a web page.
+ * 
+ * Form has client-side and server-side validation and user notification
+ * for required fields.
+ * The local path for the webform page can be admin-configured or defaults to
+ * X2DEFAULT_PATH.
+ * When form passes validation, it redirects users to an admin-configured URL
+ * or X2DEFAULT_REDIRECT.
+ *
+ * @todo Define validation error text strings for reuse in tests
+ * 
+ */
+
+
+$MODDIR = drupal_get_path('module', 'xmltoform');
+require_once "functions.inc";
+
+/**
+ * Default value for web form path
+ */
+define('X2DEFAULT_PATH', 'xmltoform');
+
+/**
+ * Default URL for website users are redirected to on form submission
+ */
+define('X2DEFAULT_REDIRECT', 'http://www.controlnow.com/');
+
+/**
+ * Implements hook_help().
+ *
+ * Displays help and module information.
+ *
+ * @param path 
+ *   Which path of the site we're using to display help
+ * @param arg 
+ *   Array that holds the current path as returned from arg() function
+ */
+function xmltoform_help($path, $arg) {
+  switch ($path) {
+    case "admin/help#xmltoform":
+      $helptext = '<p>' . t("Consumes XML and builds a redirecting web form.") . '</p>';
+		return $helptext;
+      break;
+  }
+}
+
+/**
+ * Implements hook_permission().
+ */
+function xmltoform_permission() {
+  return array(
+    'access xmltoform content' => array(
+      'title' => t('Access web form produced by the XML To Form module'),
+    )
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function xmltoform_menu() {
+  $items = array();
+
+  // Private configuration page
+  $items['admin/config/content/xmltoform'] = array(
+    'title' => 'XML To Form',
+    'description' => 'Configure local path to webform and URL it redirects to.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('xmltoform_private_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  // Public form submission page
+  $path = variable_get('xmltoform_path', X2DEFAULT_PATH);
+  $items[$path] = array(
+    'title' => 'XML To Form',
+    'description' => 'Public XML To Form webform',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('xmltoform_public_form'),
+    'access arguments' => array('access xmltoform content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Page callback: XML To Form module configuration settings
+ *
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state 
+ *   during processing.
+ *
+ * @return $form
+ * 
+ * @see xmltoform_menu()
+ */
+function xmltoform_private_form($form, &$form_state) {
+  $form['xmltoform_path'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Local path to web form'),
+    '#default_value' => variable_get('xmltoform_path', X2DEFAULT_PATH),
+    '#size' => 80,
+    '#maxlength' => 128,
+    '#description' => t('The web address for the public web form - e.g. ' . X2DEFAULT_PATH),
+    '#required' => TRUE,
+  );
+  $form['xmltoform_redirect'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Redirect URL for web form submissions'),
+    '#default_value' => variable_get('xmltoform_redirect', X2DEFAULT_REDIRECT),
+    '#size' => 80,
+    '#maxlength' => 128,
+    '#description' => t('URL to redirect users to after they have submitted the form - e.g. ' . X2DEFAULT_REDIRECT),
+    '#required' => TRUE,
+  );
+  // Use a custom submit button rather than system_settings_form($form) for
+  // saving data to persistent variables so we can reset the webform path
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save configuration',
+  );
+  return $form;
+}
+
+/**
+ * Page callback: XML To Form public form
+ *
+ * This function calls another in an include file.
+ *
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state 
+ *   during processing.
+ *
+ * @return $form
+ *
+ * @see xmltoform_menu()
+ * @see xmltoform_public_form_validate()
+ * @see xmltoform_public_form_submit()
+ * @ingroup forms
+ *
+ * @todo Get page title from a configurable variable
+ * @todo Loop over multiple fieldsets
+ * 
+ */
+function xmltoform_public_form($form, &$form_state) {
+  $form = xmltoform_public_formconstruct($form);
+  return $form;
+}
+
+/**
+ * Implements validation from the Form API.
+ * 
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state 
+ *   during processing.
+ */
+function xmltoform_private_form_validate($form, &$form_state){
+  $path = $form_state['values']['xmltoform_path'];
+  $redirect = $form_state['values']['xmltoform_redirect'];
+  if (!valid_url($redirect,TRUE)) {
+    form_set_error('xmltoform_redirect', t('You must enter a valid URL - e.g. ' . X2DEFAULT_REDIRECT));
+  }
+}
+
+/**
+ * Implements validation from the Form API.
+ *
+ * Note that date format checks are handled by the Date module/submodule.
+ * But we can check for invalid names and future dates of birth.
+ * 
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state 
+ *   during processing.
+ */
+function xmltoform_public_form_validate($form, &$form_state){
+  // names should only have letters
+  $forename = $form_state['values']['xmltoform_forename'];;
+  if (!ctype_alpha($forename)) {
+    form_set_error('xmltoform_forename', t('You must only enter letters in your forename.'));
+  }
+  $surname = $form_state['values']['xmltoform_surename'];
+  if (!ctype_alpha($surname)) {
+    form_set_error('xmltoform_surename', t('You must only enter letters in your surname.'));
+  }
+  // a date of birth should not be in the future (unless it's for a time traveller)
+  $dob = $form_state['values']['xmltoform_dob'];
+  if (!is_array($dob)) { // invalid dates are found in arrays not strings
+    $dt = DateTime::createFromFormat("Y-m-d H:i", $dob);
+    if ($dt !== false && !array_sum($dt->getLastErrors())) { // check date valid
+      $now = new DateTime();
+      if ($dt > $now) { // is date in future?
+    	  form_set_error('xmltoform_dob', t('Your date of birth cannot be in the future.'));
+      }
+    }
+  }
+}
+
+/**
+ * Implements submission from the Form API.
+ *
+ * Redirects user to external website. 
+ * 
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state 
+ *   during processing.
+ *
+ * @todo
+ *   This is where we could pass the form data to the external website.
+ */
+function xmltoform_public_form_submit($form, &$form_state) {
+  $redirect = variable_get('xmltoform_redirect', X2DEFAULT_REDIRECT);
+  $form_state['redirect'] = $redirect;	
+}
+
+/**
+ * Implements submission from the Form API.
+ *
+ * Saves configurations variables and resets path for web form by
+ * rebuilding menu and thereby triggering xmltoform_menu.
+ * 
+ * @param $form
+ *   A structured array containing the elements and properties of the form.
+ * @param $form_state
+ *   An array that stores information about the form's current state 
+ *   during processing.
+ *
+ * @see system_settings_form_submit()
+ * @see xmltoform_menu()
+ * 
+ */
+function xmltoform_private_form_submit($form, &$form_state) {
+	// Exclude unnecessary elements.
+  form_state_values_clean($form_state);
+
+  foreach ($form_state ['values'] as $key => $value) {
+    if (is_array($value) && isset($form_state ['values']['array_filter'])) {
+      $value = array_keys(array_filter($value));
+    }
+    variable_set($key, $value);
+  }
+
+  drupal_set_message(t('The configuration options have been saved.'));
+  menu_rebuild();	
+}

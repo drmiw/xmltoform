@@ -1,0 +1,15 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the xltoform module.
+ */
+
+/**
+ * Implements hook_uninstall()
+ */
+function xmltoform_uninstall() {
+  variable_del('xmltoform_redirect');
+  variable_del('xmltoform_path');
+}
+

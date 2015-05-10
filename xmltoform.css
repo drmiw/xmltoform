@@ -1,0 +1,13 @@
+/* No need to set time in date of birth! */
+div.form-item-xmltoform-dob-time {
+	display:none;
+}
+
+/* line up and space out gender options */
+div.form-item-xmltoform-gender {
+	display:inline;
+	margin-left:3em;
+}
+div.form-item-xmltoform-gender:first-child {
+	margin-left:0;
+}
