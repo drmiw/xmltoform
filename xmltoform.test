@@ -42,7 +42,7 @@ class xmltoformTestCase extends DrupalWebTestCase {
   public function testXmtoformConfig() {
 
     // Check web form is not accessible at the currently defined path
-	 $current_path = variable_get('xmltoform_path', X2DEFAULT_PATH);
+	 $current_path = variable_get('xmltoform_path', XMLTOFORM_DEFAULT_PATH);
     $this->drupalGet($current_path);
     $this->assertResponse(403);
 	 
@@ -69,7 +69,7 @@ class xmltoformTestCase extends DrupalWebTestCase {
     $edit['xmltoform_path'] = $current_path;
     $edit['xmltoform_redirect'] = 'test.com';
     $this->drupalPost($config_path, $edit, t('Save configuration'));
-    $this->assertText(t('You must enter a valid URL - e.g. ' . X2DEFAULT_REDIRECT), 'Caught invalid URL');
+    $this->assertText(t('You must enter a valid URL - e.g. ' . XMLTOFORM_DEFAULT_REDIRECT), 'Caught invalid URL');
 	 
 	 // Check valid module configuration settings can be saved
     $edit = array();
