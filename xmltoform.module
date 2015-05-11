@@ -198,7 +198,8 @@ function xmltoform_public_form_validate($form, &$form_state){
   $dob = $form_state['values']['xmltoform_dob'];
   if (!is_array($dob)) { // invalid dates are found in arrays not strings
     $dt = MyDateTime::createFromFormat("Y-m-d H:i", $dob);
-    if ($dt !== false && !array_sum($dt->getLastErrors())) { // check date valid
+//    if ($dt !== false && !array_sum($dt->getLastErrors())) { // check date valid
+    if ($dt !== false) { // check date valid
       $now = new DateTime();
       if ($dt > $now) { // is date in future?
     	  form_set_error('xmltoform_dob', t('Your date of birth cannot be in the future.'));
