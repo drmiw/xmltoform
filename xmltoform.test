@@ -4,18 +4,20 @@
  * Tests for the XML To Form module.
  */
 
-$MODDIR = drupal_get_path('module', 'xmltoform');
+$mod_dir = drupal_get_path('module', 'xmltoform');
 require_once "functions.inc";
-  
+
 /**
- * Tests the functionality of XMl To Form
+ * Tests the functionality of XMl To Form.
  *
  * @todo Perhaps add drupalPostAJAX validation checks.
- * 
  */
-class xmltoformTestCase extends DrupalWebTestCase {
-  protected $admin_user;
+class XmltoformTestCase extends DrupalWebTestCase {
+  protected $adminUser;
 
+  /**
+   * Register the test.
+   */
   public static function getInfo() {
     // Note: getInfo() strings are not translated with t().
     return array(
@@ -24,39 +26,42 @@ class xmltoformTestCase extends DrupalWebTestCase {
       'group' => 'XML To Form',
     );
   }
-  
+
+  /**
+   * Enable modules and create user/s.
+   */
   public function setUp() {
     // Enable any modules required for the test.
-    parent::setUp(array('xmltoform')); // Dependencies are automatically enabled
+    // Note: Dependencies are automatically enabled.
+    parent::setUp(array('xmltoform'));
     // Create and log in our admin user.
-    $this->admin_user = $this->drupalCreateUser(array(
+    $this->adminUser = $this->drupalCreateUser(array(
       'access administration pages',
-//      'extra special edit any simpletest_example',
       ));
-    $this->drupalLogin($this->admin_user);
+    $this->drupalLogin($this->adminUser);
   }
-  
+
   /**
-    * Tests configuration of the module and generated web form
-    */
+   * Tests configuration of the module and generated web form.
+   */
   public function testXmtoformConfig() {
 
-    // Check web form is not accessible at the currently defined path
-	 $current_path = variable_get('xmltoform_path', XMLTOFORM_DEFAULT_PATH);
+    // Check web form is not accessible at the currently defined path.
+    $current_path = variable_get('xmltoform_path', XMLTOFORM_DEFAULT_PATH);
     $this->drupalGet($current_path);
     $this->assertResponse(403);
-	 
-    // Check web form does not exist at the test path
-	 $test_path = 'xmltoformtest';
-    $this->drupalGet($test_path); 
+
+    // Check web form does not exist at the test path.
+    $test_path = 'xmltoformtest';
+    $this->drupalGet($test_path);
     $this->assertResponse(404);
 
-	 // Check configuration page is in expected place and accessible by admin
-	 $config_path = "admin/config/content/xmltoform";
-    $this->drupalGet($config_path); 
+    // Check configuration page is in expected place and accessible by admin.
+    $config_path = "admin/config/content/xmltoform";
+    $this->drupalGet($config_path);
     $this->assertResponse(200);
-	
-	 // Test validation of empty path and redirect URL fields
+
+    // Test validation of empty path and redirect URL fields.
     $edit = array();
     $edit['xmltoform_path'] = '';
     $edit['xmltoform_redirect'] = '';
@@ -64,81 +69,81 @@ class xmltoformTestCase extends DrupalWebTestCase {
     $this->assertText(t('Local path to web form field is required.'), 'Caught empty path field');
     $this->assertText(t('Redirect URL for web form submissions field is required.'), 'Caught empty redirect URL field.');
 
-	 // Test validation of redirect URL field, including http etc
+    // Test validation of redirect URL field, including http etc.
     $edit = array();
     $edit['xmltoform_path'] = $current_path;
     $edit['xmltoform_redirect'] = 'test.com';
     $this->drupalPost($config_path, $edit, t('Save configuration'));
-    $this->assertText(t('You must enter a valid URL - e.g. ' . XMLTOFORM_DEFAULT_REDIRECT), 'Caught invalid URL');
-	 
-	 // Check valid module configuration settings can be saved
+    $warning_text = 'You must enter a valid URL - e.g. ' . XMLTOFORM_DEFAULT_REDIRECT;
+    $this->assertText($warning_text, 'Caught invalid URL');
+
+    // Check valid module configuration settings can be saved.
     $edit = array();
     $edit['xmltoform_path'] = $test_path;
-    $edit['xmltoform_redirect'] = $GLOBALS['base_url']."/node"; // use this site for testing
+    $edit['xmltoform_redirect'] = $GLOBALS['base_url'] . "/node";
+    // Use this site for testing.
     $this->drupalPost($config_path, $edit, t('Save configuration'));
     $this->assertText(t('The configuration options have been saved.'));
 
-	 // Ensure form can't be accessed (even by admin) until permission granted
-	 $set_path = variable_get('xmltoform_path');
-    $this->drupalGet($set_path); 
+    // Ensure form can't be accessed (even by admin) until permission granted.
+    $set_path = variable_get('xmltoform_path');
+    $this->drupalGet($set_path);
     $this->assertResponse(403);
-	 
-	 // Log out admin user, give anonymous user permission and check form access
+
+    // Log out admin user, give anonymous user permission and check form access.
+    // Note: To log in again use $this->drupalLogin($adminUser).
     $this->drupalLogout();
     $this->drupalGet($set_path);
     $this->assertResponse(403);
-//    $this->drupalLogin($admin_user);
     user_role_grant_permissions(DRUPAL_ANONYMOUS_RID, array('access xmltoform content'));
     $this->drupalGet($set_path);
     $this->assertResponse(200);
-	 
-	 // Check web form has the heading text somewhere on the page
-    $this->assertText(t('Personal Details'), "Page heading 'Personal Details' found");
-	 
-	 // Use same constructor as module to get form elements and button text
-	 $form = xmltoform_public_formconstruct(array());
-	 $submit_text = $form['submit']['#value'];
 
-	 // Check form fields are on the page and invalid dates & names are rejected
-	 foreach ($form as $key => $value) {
-		if ($value['#type'] == "date_popup") {
-			// test invalid date
-			$edit = array ($key . "[date]" => "abcdefg");
-			$this->drupalPost($set_path, $edit, t($submit_text));
-			$this->assertText(t('The value input'), 'Caught invalid date');
-			// test future date
-			$site_date_format = variable_get('date_format_short', 'd/m/Y - H:i');
-			$split_dates = explode(" ", $site_date_format);
-			$future_date = date($split_dates[0],strtotime('+2 years', time()));
-			$edit = array ($key . "[date]" => $future_date);
-			$this->drupalPost($set_path, $edit, t($submit_text));
-			$this->assertText(t('cannot be in the future'), "Caught future date $future_date");			
-		} else if ($value['#type'] != "submit") {
-			$this->assertFieldByName($key, 0, "field $key is in form");
-			if ($key == "xmltoform_forename" || $key == "xmltoform_surename") {
-			  $edit = array ($key => "88888");
-           $this->drupalPost($set_path, $edit, t($submit_text));
-			  if ($key == "xmltoform_forename") {
-			    $this->assertText(t('You must only enter letters in your forename.'), 'Caught invalid forename');
-			  } else {
-			    $this->assertText(t('You must only enter letters in your surname.'), 'Caught invalid surname');
-			  }
-			}
-		}
-	 }
-	 
-	 // Test client side validation on current page
-//	 $this->drupalPostAJAX(NULL, array(), array('xmltoform_forename' => ''));
-//    $this->drupalPost(NULL, $edit, t('Submit details'));
-//	 $this->assertText(t('First name field is required.'), 'Missing surname');
-	 
-	 // Check the web form redirects following successful submission
+    // Check web form has the heading text somewhere on the page.
+    $this->assertText(t('Personal Details'), "Page heading 'Personal Details' found");
+
+    // Use same constructor as module to get form elements and button text.
+    $form = xmltoform_public_formconstruct(array());
+    $submit_text = $form['submit']['#value'];
+
+    // Check form fields are on the page and invalid dates & names are rejected.
+    foreach ($form as $key => $value) {
+      if ($value['#type'] == "date_popup") {
+        // Test invalid date.
+        $edit = array($key . "[date]" => "abcdefg");
+        $this->drupalPost($set_path, $edit, t($submit_text));
+        $this->assertText(t('The value input'), 'Caught invalid date');
+        // Test future date.
+        $site_date_format = variable_get('date_format_short', 'd/m/Y - H:i');
+        $split_dates = explode(" ", $site_date_format);
+        $future_date = date($split_dates[0], strtotime('+2 years', time()));
+        $edit = array($key . "[date]" => $future_date);
+        $this->drupalPost($set_path, $edit, t($submit_text));
+        $this->assertText(t('cannot be in the future'), "Caught future date $future_date");
+      }
+      elseif ($value['#type'] != "submit") {
+        $this->assertFieldByName($key, 0, "field $key is in form");
+        if ($key == "xmltoform_forename" || $key == "xmltoform_surename") {
+          $edit = array($key => "88888");
+          $this->drupalPost($set_path, $edit, t($submit_text));
+          if ($key == "xmltoform_forename") {
+            $this->assertText(t('You must only enter letters in your forename.'), 'Caught invalid forename');
+          }
+          else {
+            $this->assertText(t('You must only enter letters in your surname.'), 'Caught invalid surname');
+          }
+        }
+      }
+    }
+
+    // Check the web form redirects following successful submission.
     $edit = array();
     $edit['xmltoform_gender'] = 1;
     $edit['xmltoform_terms'] = 1;
     $this->drupalPost($set_path, $edit, t($submit_text));
-	 $set_redirect = variable_get('xmltoform_redirect');
-	 $options = array('absolute' => TRUE);
-	 $this->assertUrl($set_redirect, $options, 'Redirection was a success.');	 
+    $set_redirect = variable_get('xmltoform_redirect');
+    $options = array('absolute' => TRUE);
+    $this->assertUrl($set_redirect, $options, 'Redirection was a success.');
   }
+
 }
