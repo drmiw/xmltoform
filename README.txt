@@ -4,6 +4,16 @@ hasn't been tested with any other xml file. Moreover, the web form it creates
 does not save form data to the Drupal database or pass on the data to an
 external - it simply redirects the user on successful form submission.
 
+Usage
+=====
+After you have installed this module (see below) on a Drupal 7 website $ROOT
+you can configure it here: $ROOT/admin/config/content/xmltoform
+
+On this configuration page you can set:
+
+1, the Path to the web form on your local site (default is xmltoform); and the
+2, URL for the website the form redirects to (default http://www.logicnow.com)
+
 Installation instructions
 =========================
 
