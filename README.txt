@@ -2,7 +2,7 @@ This Drupal 7 module reads in the file form.xml and creates a web form using
 Form API. The module has only been written for demonstration purposes and
 hasn't been tested with any other xml file. Moreover, the web form it creates
 does not save form data to the Drupal database or pass on the data to an
-external - it simply redirects the user on successful form submission.
+external site - it simply redirects the user on successful form submission.
 
 Usage
 =====
